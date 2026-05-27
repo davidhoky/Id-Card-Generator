@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NAWASENA – ID Card Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    :root {
+      --navy:      #1a237e;
+      --navy-dark: #0d1257;
+      --gold:      #f9c92a;
+      --white:     #ffffff;
+      --shadow:    0 8px 32px rgba(13,18,87,.18);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: linear-gradient(135deg, #e8eaf6 0%, #c5cae9 100%);
+      min-height: 100vh;
+    }
+
+    /* HEADER - SUDAH DIPERBAIKI MENGGUNAKAN FORMAT .JPEG */
+    .site-header {
+      background: #ffffff; /* Putih agar menyatu bersih dengan latar belakang header baru */
+      display: flex; 
+      justify-content: center; 
+      align-items: center;
+      height: 130px; 
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      overflow: hidden;
+    }
+    .header-bg {
+      width: auto; height: 100%;
+      object-fit: contain; 
+      transform: scale(2.3);
+    }
+
+    .page-wrapper { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+    .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: start; }
+    @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+
+    /* BAGIAN KIRI: FORM */
+    .form-column {
+      background: var(--white); padding: 2rem; border-radius: 12px;
+      box-shadow: var(--shadow); position: relative; overflow: hidden;
+    }
+    .form-column::before {
+      content: ''; position: absolute; top: 0; left: 0; width: 6px; height: 100%;
+      background: var(--gold);
+    }
+    .form-group { margin-bottom: 1.5rem; }
+    label { display: block; font-size: 0.85rem; font-weight: 700; color: #555; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    input[type="text"] {
+      width: 100%; padding: 0.8rem 1rem; border: 2px solid #e0e0e0;
+      border-radius: 6px; font-family: inherit; font-size: 1rem;
+      transition: border-color 0.3s; text-transform: uppercase;
+    }
+    input[type="text"]:focus { outline: none; border-color: var(--navy); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    /* UPLOAD AREA */
+    .upload-area {
+      border: 2px dashed #bbb; border-radius: 8px; padding: 2rem 1rem;
+      text-align: center; cursor: pointer; transition: all 0.3s;
+      background: #fafafa; position: relative;
+    }
+    .upload-area:hover, .upload-area.dragover { border-color: var(--navy); background: #f0f2f5; }
+    .upload-icon { font-size: 2rem; color: var(--navy); margin-bottom: 0.5rem; }
+    .upload-text { font-size: 0.9rem; color: #666; font-weight: 600; }
+    .upload-hint { font-size: 0.75rem; color: #999; margin-top: 4px; }
+    #input-foto { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+    .preview-thumb {
+      display: none; width: 60px; height: 80px; object-fit: cover;
+      border-radius: 4px; margin: 1rem auto 0; box-shadow: 0 4px 10px rgba(0,0,0,.1);
+    }
+
+    /* TOMBOL DOWNLOAD */
+    .btn-download {
+      width: 100%; padding: 1rem; background: var(--navy-dark); color: var(--white);
+      border: none; border-radius: 6px; font-size: 1.1rem; font-weight: 800;
+      cursor: pointer; transition: background 0.3s, transform 0.1s;
+      display: flex; justify-content: center; align-items: center; gap: 8px;
+    }
+    .btn-download:hover { background: var(--navy); }
+    .btn-download:active { transform: scale(0.98); }
+
+    /* BAGIAN KANAN: PREVIEW CARD */
+    .preview-column { display: flex; flex-direction: column; align-items: center; }
+    
+    #id-card {
+      position: relative;
+      width: 100%;
+      max-width: 450px;
+      aspect-ratio: 250 / 353;
+      background: #fff;
+    }
+    
+    .card-bg {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      object-fit: fill;
+      z-index: 1;
+    }
+
+    /* KOORDINAT FOTO & TEKS */
+    .photo-wrapper {
+      position: absolute; z-index: 2;
+      top: 23.1%;     
+      left: 31%;    
+      width: 38%;   
+      height: 35.5%;  
+      overflow: hidden;
+      border: 3.5px solid #ffffff;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+    #card-foto {
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: top center;
+      background-repeat: no-repeat;
+    }
+
+    .text-overlay {
+      position: absolute; z-index: 3;
+      text-align: center;
+      font-family: 'Nunito', sans-serif;
+      font-weight: 800;
+      color: #0d1257;
+      text-transform: uppercase;
+  
+      display: flex; 
+      align-items: center; 
+      justify-content: center;
+  
+      white-space: nowrap; 
+      overflow: hidden;      /* KUNCI: Memotong teks yang keluar dari batas kotak */
+      padding: 0 10px;        /* Memberi jarak aman sedikit di kiri & kanan */
+      box-sizing: border-box; 
+    }
+
+    /* Koordinat Kotak Kuning */
+
+    .text-nama { top: 61.4%; left: 10%; width: 80%; height: 6%; font-size: 1.5rem; }
+    .text-kelompok { top: 70.4%; left: 10%; width: 80%; height: 6%; font-size: 1.2rem; }
+    
+    .text-hp-aktif { top: 78.8%; left: 10.5%; width: 38%; height: 6%; font-size: 1rem; }
+    .text-hp-darurat { top: 78.8%; right: 10.5%; width: 38%; height: 6%; font-size: 1rem; }
+    
+    .text-alamat { top: 86.1%; left: 10%; width: 80%; height: 6%; font-size: 1.1rem; }
+
+    /* LOADING OVERLAY */
+    .loading-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(13,18,87,.9); z-index: 9999;
+      display: none; flex-direction: column; justify-content: center; align-items: center;
+      color: var(--gold); font-family: 'Oswald', sans-serif; font-size: 1.5rem; letter-spacing: 2px;
+    }
+    .loading-overlay.active { display: flex; }
+    .spinner {
+      width: 50px; height: 50px; border: 5px solid rgba(249,201,42,.3);
+      border-top-color: var(--gold); border-radius: 50%;
+      animation: spin 1s linear infinite; margin-bottom: 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <img src="header.jpeg" class="header-bg" alt="Header Nawasena" />
+  </header>
+
+  <div class="page-wrapper">
+    <div class="main-grid">
+      
+      <div class="form-column">
+        <h2 style="margin-bottom: 1.5rem; color: var(--navy-dark); font-family: 'Oswald', sans-serif; letter-spacing: 1px;">Data Peserta</h2>
+        
+        <div class="form-group">
+          <label>1. Foto Profil (PAS FOTO 3x4)</label>
+          <div class="upload-area" id="drop-zone">
+            <input type="file" id="input-foto" accept="image/*" />
+            <div class="upload-text">Klik atau seret foto ke sini</div>
+            <div class="upload-hint">JPG / PNG </div>
+            <img id="thumb-preview" class="preview-thumb" src="" alt="thumb" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>2. Nama Lengkap</label>
+          <input type="text" id="input-nama" placeholder="SUDA GANDHI" />
+        </div>
+
+        <div class="form-group">
+          <label>3. Kelompok</label>
+          <input type="text" id="input-kelompok" placeholder="KELOMPOK 1" />
+        </div>
+
+        <div class="form-group form-row">
+          <div>
+            <label>4. No. HP Aktif</label>
+            <input type="text" id="input-hp-aktif" placeholder="0812..." />
+          </div>
+          <div>
+            <label>No. HP Darurat</label>
+            <input type="text" id="input-hp-darurat" placeholder="0812..." />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>5. Alamat</label>
+          <input type="text" id="input-alamat" placeholder="JL. SUNSET ROAD NO. 88" />
+        </div>
+
+        <button class="btn-download" id="btn-download">
+          DOWNLOAD
+        </button>
+      </div>
+
+      <div class="preview-column">
+        <div style="margin-bottom: 1rem; font-weight: 800; color: var(--navy-dark);">Preview Id Card B4</div>
+        
+        <div id="id-card">
+          <img src="tamplate.PNG" class="card-bg" alt="Template" />
+          
+          <div class="photo-wrapper">
+            <div id="card-foto"></div>
+          </div>
+
+          <div class="text-overlay text-nama" id="card-nama">NAMA</div>
+          <div class="text-overlay text-kelompok" id="card-kelompok">KELOMPOK</div>
+          <div class="text-overlay text-hp-aktif" id="card-hp-aktif">NO HP</div>
+          <div class="text-overlay text-hp-darurat" id="card-hp-darurat">NO HP DARURAT</div>
+          <div class="text-overlay text-alamat" id="card-alamat">ALAMAT</div>
+        </div>
+        
+        <p style="margin-top: 1rem; font-size: 0.8rem; color: #666; text-align: center;">
+          PENTING: Pastikan data sudah benar sebelum klik Download.
+        </p>
+      </div>
+    </div>
+  </div>
+
+<footer style="text-align: center; padding: 2rem; color: #666; font-size: 0.9rem;">
+  <p>&copy; Marcopolo Bali International.</p>
+  <p>NAWASENA. Marconisti Upgrading & Training</p>
+</footer>
+
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="spinner"></div>
+    <div>Generating HD Card...</div>
+  </div>
+
+  <script>
+    if (window.location.protocol === 'file:') {
+        alert("PERHATIAN: Kamu membuka file ini dengan cara double-click (file://). Tombol Download mungkin akan GAGAL karena diblokir oleh browser. Tolong buka menggunakan 'Go Live' (Live Server) di VS Code.");
+    }
+
+    const syncText = (inputId, cardId, defaultText, maxRemSize) => {
+      const inputEl = document.getElementById(inputId);
+      const cardEl = document.getElementById(cardId);
+      
+      inputEl.addEventListener('input', (e) => {
+        cardEl.textContent = e.target.value || defaultText;
+        
+        // 1. Reset ukuran font ke maksimal setiap kali ngetik
+        let currentSize = maxRemSize;
+        cardEl.style.fontSize = currentSize + 'rem';
+        
+        // 2. Looping: Paksa mengecil selama teks lebih lebar dari kotak kuningnya
+        while (cardEl.scrollWidth > cardEl.clientWidth && currentSize > 0.4) {
+          currentSize -= 0.05;
+          cardEl.style.fontSize = currentSize + 'rem';
+        }
+      });
+    };
+
+    // Pastikan pemanggilannya tetap seperti ini
+    syncText('input-nama', 'card-nama', '', 1.5);
+    syncText('input-kelompok', 'card-kelompok', '', 1.2);
+    syncText('input-hp-aktif', 'card-hp-aktif', '', 1.0);
+    syncText('input-hp-darurat', 'card-hp-darurat', '', 1.0);
+    syncText('input-alamat', 'card-alamat', '', 1.1);
+
+    const fileInput = document.getElementById('input-foto');
+    const cardFoto  = document.getElementById('card-foto');
+    const thumb     = document.getElementById('thumb-preview');
+    
+    const loadPhoto = (file) => {
+      if(file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          cardFoto.style.backgroundImage = `url(${e.target.result})`;
+          thumb.src = e.target.result;
+          thumb.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+
+    fileInput.addEventListener('change', e => loadPhoto(e.target.files[0]));
+
+    const zone = document.getElementById('drop-zone');
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => { zone.classList.remove('dragover'); });
+    zone.addEventListener('drop', e => { 
+      e.preventDefault(); 
+      zone.classList.remove('dragover'); 
+      loadPhoto(e.dataTransfer.files[0]); 
+    });
+
+    document.getElementById('btn-download').addEventListener('click', async () => {
+      const card   = document.getElementById('id-card');
+      const loader = document.getElementById('loading-overlay');
+      const btn    = document.getElementById('btn-download');
+      
+      loader.classList.add('active');
+      btn.disabled = true;
+
+      try {
+        // Wait for all real img tags (template bg, thumb, etc.)
+        await Promise.all([...card.querySelectorAll('img')].map(img =>
+          img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
+        ));
+
+        // Pre-load foto agar tersedia secara sinkron di dalam onclone
+        let cachedFotoImg = null;
+        const bgImage = cardFoto.style.backgroundImage;
+        if (bgImage && bgImage !== 'none' && bgImage !== '') {
+          const url = bgImage.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
+          cachedFotoImg = await new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => resolve(null);
+            img.src = url;
+          });
+        }
+
+        const canvas = await html2canvas(card, {
+          scale: 4, 
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: null,
+          onclone: (clonedDoc) => {
+            // html2canvas tidak support CSS background-image maupun object-fit.
+            // Solusi: ganti div foto dengan <canvas> yang sudah digambar manual
+            // menggunakan logika "cover + top center" sehingga hasilnya tidak gepeng.
+            if (!cachedFotoImg) return;
+
+            const clonedFoto = clonedDoc.getElementById('card-foto');
+            const dw = clonedFoto.offsetWidth  || clonedFoto.clientWidth  || 200;
+            const dh = clonedFoto.offsetHeight || clonedFoto.clientHeight || 267;
+
+            const cvs = clonedDoc.createElement('canvas');
+            cvs.width  = dw;
+            cvs.height = dh;
+            cvs.style.cssText = 'display:block;width:100%;height:100%;';
+
+            const ctx = cvs.getContext('2d');
+            const iw = cachedFotoImg.naturalWidth;
+            const ih = cachedFotoImg.naturalHeight;
+
+            // Logika background-size:cover; background-position: top center
+            const scale = Math.max(dw / iw, dh / ih);
+            const sw = iw * scale;
+            const sh = ih * scale;
+            const sx = (dw - sw) / 2; // center horizontal
+            const sy = 0;             // top vertical
+            ctx.drawImage(cachedFotoImg, sx, sy, sw, sh);
+
+            clonedFoto.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;overflow:hidden;background:none;';
+            clonedFoto.innerHTML = '';
+            clonedFoto.appendChild(cvs);
+          }
+        });
+
+        const nama = document.getElementById('input-nama').value.trim() || 'PESERTA';
+        const link = document.createElement('a');
+        link.download = 'ID_Card_' + nama.replace(/\s+/g,'_') + '.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } catch(err) {
+        alert('Gagal generate! Pastikan kamu membuka web ini lewat "Go Live" (Live Server), bukan di-klik dua kali dari folder.');
+        console.error(err);
+      } finally {
+        loader.classList.remove('active');
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
