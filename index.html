@@ -339,7 +339,7 @@
         }
 
         const canvas = await html2canvas(card, {
-          scale: 4, 
+          scale: 6,
           useCORS: true,
           allowTaint: true,
           backgroundColor: null,
@@ -350,15 +350,22 @@
             if (!cachedFotoImg) return;
 
             const clonedFoto = clonedDoc.getElementById('card-foto');
-            const dw = clonedFoto.offsetWidth  || clonedFoto.clientWidth  || 200;
-            const dh = clonedFoto.offsetHeight || clonedFoto.clientHeight || 267;
-
+            const baseDw = clonedFoto.offsetWidth  || clonedFoto.clientWidth  || 200;
+            const baseDh = clonedFoto.offsetHeight || clonedFoto.clientHeight || 267;
+            
+            const scaleFactor = 6;
+            const dw = baseDw * scaleFactor;
+            const dh = baseDh * scaleFactor;
+            
             const cvs = clonedDoc.createElement('canvas');
             cvs.width  = dw;
             cvs.height = dh;
             cvs.style.cssText = 'display:block;width:100%;height:100%;';
 
             const ctx = cvs.getContext('2d');
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+
             const iw = cachedFotoImg.naturalWidth;
             const ih = cachedFotoImg.naturalHeight;
 
@@ -370,9 +377,13 @@
             const sy = 0;             // top vertical
             ctx.drawImage(cachedFotoImg, sx, sy, sw, sh);
 
+            const imgEl = clonedDoc.createElement('img');
+            imgEl.src = cvs.toDataURL('image/png', 1.0);
+            imgEl.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;';
+
             clonedFoto.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;overflow:hidden;background:none;';
             clonedFoto.innerHTML = '';
-            clonedFoto.appendChild(cvs);
+            clonedFoto.appendChild(imgEl);
           }
         });
 
